@@ -1,4 +1,4 @@
-import { ChatRepository } from "@repositories/chatRepository.js";
+import { ChatRepository } from "@/app/repositories/chat.repository.js";
 import type { StreamResponse } from "../types/chat.js";
 import type { PromptContext } from "../types/npc.js";
 import type { NPCResponse } from "../types/actions.js";
@@ -6,10 +6,10 @@ import {
   createChatStream,
   type ChatCompletionUserMessageParam as ChatCompletionMessageParam,
 } from "@utils/openai.js";
-import { MemoryService } from "./memoryService.js";
-import { NPCService } from "./npcService.js";
-import { PromptOptimizer } from "./promptOptimizer.js";
-import { StoryService } from "./storyService.js";
+import { MemoryService } from "./memory.service.js";
+import { NPCService } from "./npc.service.js";
+import { PromptOptimizer } from "./promptOptimizer.service.js";
+import { StoryService } from "./story.service.js";
 import type { Quest } from "../types/story.js";
 import type { Message } from "@prisma/client";
 

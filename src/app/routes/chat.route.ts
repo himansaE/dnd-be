@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { authRequired } from "@middlewares/auth.middleware.js";
-import { ChatService } from "@services/chatService.js";
+import { ChatService } from "@/app/services/chat.service.js";
 
 const chat = new Hono();
 const chatService = new ChatService();

@@ -1,7 +1,7 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
-import { chat } from "./app/routes/chat.js";
+import { chat } from "./app/routes/chat.route.js";
 import { getEnvVariable } from "./app/utils/env.js";
 
 const app = new Hono();

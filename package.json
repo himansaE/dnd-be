@@ -2,7 +2,11 @@
   "name": "dnd-be",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "type:check": "tsc --noEmit",
+    "type:watch": "tsc --noEmit --watch"
   },
   "dependencies": {
     "@clerk/backend": "^1.23.7",
@@ -16,6 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
-    "tsx": "^4.7.1"
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
   }
 }

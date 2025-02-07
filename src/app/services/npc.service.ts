@@ -6,8 +6,8 @@ import type {
   Reputation,
   RequiredItem,
 } from "@prisma/client";
-import { StoryService } from "./storyService.js";
-import { MemoryService } from "./memoryService.js";
+import { StoryService } from "./story.service.js";
+import { MemoryService } from "./memory.service.js";
 import type { NPCRole } from "../types/npc.js";
 import { prisma } from "@repositories/database.js";
 import type {

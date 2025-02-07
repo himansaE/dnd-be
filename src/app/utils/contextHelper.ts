@@ -1,4 +1,4 @@
-import type { ValidatedContext } from "@middlewares/zodValidator.js";
+import type { ValidatedContext } from "@/app/middlewares/zodValidator.middleware.js";
 
 /**
  * Helper to safely extract validated data from context.
