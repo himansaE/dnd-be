@@ -1,26 +1,18 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import { getEnvVariable, validateEnvs } from "./app/utils/env.js";
-import { clerkMiddleware } from "@hono/clerk-auth";
-import { authRequired } from "./app/middlewares/auth.middleware.js";
 import { logger } from "hono/logger";
+import { chat } from "./app/routes/chat.js";
+import { getEnvVariable } from "./app/utils/env.js";
 
 const app = new Hono();
 
-// validate the environment variables
-if (!validateEnvs()) process.exit(1);
-
-app.use("*", clerkMiddleware());
 app.use("*", logger());
+app.route("/api/chat", chat);
 
-app.get("/", authRequired, (c) => {
-  return c.text("Hello Hono!");
-});
-
-const port = Number(getEnvVariable("PORT", "3000"));
-console.log(`Server is running on http://localhost:${port}`);
-
+const PORT = Number.parseInt(getEnvVariable("PORT", "3000"));
 serve({
   fetch: app.fetch,
-  port,
+  port: PORT,
 });
+
+console.log(`Server running at http://localhost:${PORT}`);
