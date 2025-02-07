@@ -2,7 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { getEnvVariable, validateEnvs } from "./app/utils/env.js";
 import { clerkMiddleware } from "@hono/clerk-auth";
-import { authRequired } from "./app/middleware/auth.middleware.js";
+import { authRequired } from "./app/middlewares/auth.middleware.js";
 import { logger } from "hono/logger";
 
 const app = new Hono();

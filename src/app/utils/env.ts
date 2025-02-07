@@ -9,6 +9,8 @@ config();
 const envSchema = z.object({
   PORT: z.string(),
   DATABASE_URL: z.string(),
+  OPENAI_APIKEY: z.string(),
+  OPENAI_BASEURL: z.string(),
 });
 
 type Env = z.infer<typeof envSchema>;

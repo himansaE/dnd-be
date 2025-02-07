@@ -5,10 +5,19 @@
     "strict": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
+    "baseUrl": "src",
+    "paths": {
+      "@/*": ["*"],
+      "@controllers/*": ["app/controllers/*"],
+      "@middlewares/*": ["app/middlewares/*"],
+      "@utils/*": ["app/utils/*"],
+      "@services/*": ["app/services/*"],
+      "@types/*": ["app/types/*"],
+      "@repositories/*": ["app/repositories/*"],
+      "@schemas/*": ["app/schemas/*"]
+    }
   }
 }
