@@ -12,6 +12,8 @@ const envSchema = z.object({
   OPENAI_APIKEY: z.string(),
   OPENAI_BASEURL: z.string(),
   OPENAI_MODEL_NAME: z.string(),
+  WORKER_URL: z.string(),
+  WORKER_TOKEN: z.string(),
 });
 
 type Env = z.infer<typeof envSchema>;
