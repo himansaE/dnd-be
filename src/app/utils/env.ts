@@ -1,6 +1,6 @@
 import { env } from "hono/adapter";
 import type { Context } from "hono";
-import { z } from "zod";
+import { z, type ZodIssue } from "zod";
 import { config } from "dotenv";
 
 // Initialize dotenv
@@ -11,6 +11,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string(),
   OPENAI_APIKEY: z.string(),
   OPENAI_BASEURL: z.string(),
+  OPENAI_MODEL_NAME: z.string(),
 });
 
 type Env = z.infer<typeof envSchema>;
@@ -23,7 +24,7 @@ function formatZodError(error: z.ZodError): string {
 Required environment variable ${path} is ${
         process.env[path] === undefined ? "missing" : "invalid"
       }
-Expected type: ${(issue as any).expected || "unknown"}
+Expected type: ${issue.expected || "unknown"}
 Received: ${
         process.env[path] === undefined ? "undefined" : typeof process.env[path]
       }`;

@@ -162,11 +162,13 @@ export class NPCService {
     for (const action of interaction.actions) {
       switch (action.type) {
         case "GIVE_ITEM":
-          const item = await prisma.inventoryItem.findFirst({
-            where: { itemId: action.data.itemId },
-          });
-          if (item) {
-            facts.push(`Received item: ${item.name}`);
+          {
+            const item = await prisma.inventoryItem.findFirst({
+              where: { itemId: action.data.itemId },
+            });
+            if (item) {
+              facts.push(`Received item: ${item.name}`);
+            }
           }
           break;
         case "UPDATE_REPUTATION":
