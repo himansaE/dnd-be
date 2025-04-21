@@ -14,6 +14,7 @@ const envSchema = z.object({
   OPENAI_MODEL_NAME: z.string(),
   WORKER_URL: z.string(),
   WORKER_TOKEN: z.string(),
+  BUCKET_URL: z.string(),
 });
 
 type Env = z.infer<typeof envSchema>;

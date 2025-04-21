@@ -39,6 +39,9 @@ importers:
       tsx:
         specifier: ^4.7.1
         version: 4.19.2
+      typescript:
+        specifier: ^5.3.3
+        version: 5.8.3
 
 packages:
 
@@ -399,6 +402,11 @@ packages:
     resolution: {integrity: sha512-s6zVrxuyKbbAsSAD5ZPTB77q4YIdRctkTbJ2/Dqlinwz+8ooH2gd+YA7VA6Pa93KML9GockVvoxjZ2vHP+mu8g==}
     engines: {node: '>=16'}
 
+  typescript@5.8.3:
+    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
@@ -709,6 +717,8 @@ snapshots:
       fsevents: 2.3.3
 
   type-fest@4.33.0: {}
+
+  typescript@5.8.3: {}
 
   undici-types@5.26.5: {}
 

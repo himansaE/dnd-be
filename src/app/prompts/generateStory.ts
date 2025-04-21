@@ -1,57 +1,34 @@
 import type { ChatCompletionMessageParam } from "../utils/openai.js";
 
 const generateStoryUserPrompt = `
-Please generate three unique Dungeon & Dragons-inspired stories. Each story should include:
-- "title": An evocative title that captures the essence or mystery of the story.
-- "description": A brief overview of the story's setting, conflict, or magical element.
-- "starterPlot": An engaging opening scenario or hook that introduces a challenge or mystery.
-- "imagePrompt": A short, detailed visual description suitable for image generation (for example, "A misty forest under a full moon with ancient glowing runes on stone walls").
+Generate three distinct Dungeons & Dragons story options suitable as adventure starting points. For each option, provide the following specific pieces of information:
+1.  **'title'**: A short, evocative, and dramatic name for the story option. This title is the *only* piece of information players might see initially to choose an adventure. (e.g., "Echoes of the Shattered Star", "The Crimson Tide Covenant")
+2.  **'card_background'**: A single, vivid sentence describing a visual scene. This should be highly descriptive and suitable for input into an image generator. Focus on concrete nouns, colors, atmosphere, weather, key objects, or creatures, avoiding abstract concepts or actions. (e.g., "A lone watchtower crumbles under a blood-red moon as spectral wolves howl.", "Golden sunlight streams through giant stained-glass windows onto a moss-covered stone throne.")
+3.  **'hidden_description'**: A concise (3-4 sentences) summary of the core situation, intended *only for the Dungeon Master*. This description **must** clearly outline:
+    * The **central conflict** or pressing danger the players will likely face.
+    * **Two distinct opposing groups or factions** involved in the conflict (describe their nature or goals generally, not specific named NPCs).
+    * A **secret element, twist, or hidden motivation** driving the conflict that isn't immediately obvious.
+    * A **time-sensitive element or impending event** that creates urgency (e.g., "The ritual concludes in 3 days," "The artifact loses power by sunrise," "The invasion fleet arrives with the tide").
+4.  **'plot'**: A brief (2-3 sentences) outline describing how the story should continue after the initial setup. This should describe the future progression, potential story arcs, and lingering mysteries that will guide the players’ journey.
 
-Output your response in the exact JSON format shown below:
+**Required JSON Structure**:
 
 {
-  "stories": [
-    {
-      "title": "<Title for story 1>",
-      "description": "<Description for story 1>",
-      "starterPlot": "<Starter plot for story 1>",
-      "imagePrompt": "<Image prompt for story 1>"
-    },
-    {
-      "title": "<Title for story 2>",
-      "description": "<Description for story 2>",
-      "starterPlot": "<Starter plot for story 2>",
-      "imagePrompt": "<Image prompt for story 2>"
-    },
-    {
-      "title": "<Title for story 3>",
-      "description": "<Description for story 3>",
-      "starterPlot": "<Starter plot for story 3>",
-      "imagePrompt": "<Image prompt for story 3>"
-    }
-  ]
+  "option_1": { "title": "", "card_background": "", "hidden_description": "", "plot": "" },
+  "option_2": { "title": "", "card_background": "", "hidden_description": "", "plot": "" },
+  "option_3": { "title": "", "card_background": "", "hidden_description": "", "plot": "" }
 }
-
-Replace all placeholder text with creative content. Do not include any additional text or formatting outside of this JSON structure.
 `;
 
 const generateStorySystemPrompt = `
-You are a creative storyteller specializing in fantasy narratives, particularly within the Dungeon & Dragons universe. Your task is to craft imaginative, atmospheric stories that immerse players in magical adventures. Every generated story must include:
-- A unique title that captures the essence or mystery of the tale.
-- A brief description summarizing the setting, conflict, or magical element.
-- An engaging starter plot that hooks the player into the adventure.
-- A vivid image prompt detailing a key visual scene suitable for image generation.
-
-You must strictly follow the provided JSON structure for output and not include any commentary, headings, or extra text outside the JSON structure.
+You are a creative AI specializing in generating concise and evocative Dungeons & Dragons adventure seeds. Your goal is to produce three distinct story *options* based precisely on the user's request. For each option, you must create a 'title', a visual 'card_background' sentence (for image generation), a 'hidden_description' (detailing the conflict, factions, secret twist, and urgency for the DM), and a 'plot' (describing how the story should continue). Adhere strictly to the simple language requirement, ensure thematic uniqueness across the three options, and follow the exact JSON output format specified by the user. Produce *only* the JSON data structure as the final response, without any additional commentary or formatting.
 `;
 
-const generateStoryDevPrompt = `
-As part of the application development, ensure that your output is fully compliant with the following conditions:
-- Output exactly three stories.
-- Each story is an object containing the keys "title", "description", "starterPlot", and "imagePrompt".
-- Do not introduce any markdown formatting, explanations, or additional text outside of the JSON structure.
-- Validate that the JSON structure is correctly formatted with proper quotes and keys.
-`;
+export {
+  generateStoryUserPrompt,
+  generateStorySystemPrompt,
+  // generateStoryDevPrompt,
+};
 
 export const generateStoryMessage = [
   {
@@ -62,8 +39,8 @@ export const generateStoryMessage = [
     role: "user",
     content: generateStoryUserPrompt,
   },
-  {
-    role: "developer",
-    content: generateStoryDevPrompt,
-  },
+  // {
+  //   role: "developer",
+  //   content: generateStoryDevPrompt,
+  // },
 ] satisfies ChatCompletionMessageParam[];
