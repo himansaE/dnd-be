@@ -5,14 +5,14 @@ import { chat } from "./app/routes/chat.route.js";
 import { getEnvVariable } from "./app/utils/env.js";
 import { storyGenerator } from "./app/routes/story-generator.route.js";
 import { cors } from "hono/cors";
+import router from "./app/routes/index.route.js";
 
 const app = new Hono();
 
 app.use("*", logger());
 app.use("*", cors());
 
-app.route("/api/chat", chat);
-app.route("/api/story-generator", storyGenerator);
+app.route("/api", router);
 
 const PORT = Number.parseInt(getEnvVariable("PORT", "3000"));
 serve({

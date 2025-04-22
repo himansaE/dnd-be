@@ -41,3 +41,15 @@ export interface QuestRequirements
   items: RequiredItem[];
   quests: string[];
 }
+
+export type StoryBaseOptions = {
+  scene: string;
+  characters: Character[];
+};
+
+export type Character = {
+  name: string;
+  type: string;
+  description: string;
+  ability: string;
+};

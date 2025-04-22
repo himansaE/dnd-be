@@ -1,8 +1,20 @@
 import { ItemType, type PlayerProgress, type Quest } from "@prisma/client";
-import type { StoryProgress } from "../types/story.js";
+import type { StoryBaseOptions, StoryProgress } from "../types/story.js";
 
 import { prisma } from "@repositories/database.js";
 import type { GameAction } from "../types/actions.js";
+import {
+  createChat,
+  type ChatCompletionMessageParam,
+} from "../utils/openai.js";
+import { generateCharacterGenerationPrompts } from "../prompts/characterGeneration.js";
+import { generateStoryPrompts } from "../prompts/playStory.js";
+import { writeFile, readFile, unlink, mkdir } from "fs/promises";
+import { promisify } from "util";
+import { exec } from "child_process";
+
+const run = promisify(exec);
+
 export class StoryService {
   async getPlayerProgress(playerId: string): Promise<StoryProgress> {
     const progress = await prisma.playerProgress.findUnique({
@@ -253,5 +265,134 @@ export class StoryService {
         },
       });
     }
+  }
+
+  // v 0.0.1 functionality
+
+  private async generateStoryBase(
+    title: string,
+    description: string,
+    plot: string
+  ): Promise<StoryBaseOptions> {
+    const response = await createChat(
+      generateCharacterGenerationPrompts(title, description, plot),
+      {
+        response_format: {
+          type: "json_object",
+        },
+      }
+    );
+
+    const content = JSON.parse(response) as StoryBaseOptions;
+    return content;
+  }
+
+  private async generateStoryStartScene(
+    title: string,
+    description: string,
+    plot: string,
+    base: StoryBaseOptions
+  ): Promise<string> {
+    let content: any;
+    let response: string = "";
+
+    const originalPrompts: ChatCompletionMessageParam[] = generateStoryPrompts(
+      title,
+      description,
+      plot,
+      base.scene,
+      JSON.stringify(base.characters)
+    );
+
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    while (retryCount < maxRetries) {
+      try {
+        if (retryCount === 0) {
+          console.log("Attempting initial story scene generation...");
+          response = await createChat(originalPrompts, {
+            response_format: {
+              type: "json_object",
+            },
+          });
+        } else {
+          console.warn(
+            `Retry attempt ${
+              retryCount + 1
+            }/${maxRetries} to regenerate JSON...`
+          );
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1500 * retryCount)
+          );
+
+          const regenerationPrompts: ChatCompletionMessageParam[] = [
+            ...originalPrompts,
+            {
+              role: "user",
+              content:
+                "The previous response was incomplete or malformed JSON. Please provide the **complete and valid JSON object** containing the Ink code again.",
+            },
+          ];
+
+          response = await createChat(regenerationPrompts, {
+            response_format: {
+              type: "json_object",
+            },
+          });
+        }
+
+        content = JSON.parse(response);
+
+        console.log(
+          `Successfully parsed JSON after ${retryCount + 1} attempts.`
+        );
+        break;
+      } catch (error: any) {
+        console.error(
+          `JSON parsing or API call failed on attempt ${retryCount + 1}:`,
+          error.message
+        );
+        console.log("Problematic response content:", response);
+
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          console.error(
+            `Max retries (${maxRetries}) reached. Failed to get valid JSON.`
+          );
+          // If we ran out of retries, throw an error to indicate failure
+          throw new Error(
+            "Failed to generate story scene due to persistent JSON errors after retries."
+          );
+        }
+      }
+    }
+    if (!content || typeof content !== "object" || content === null) {
+      console.error(
+        "Final result does not contain the expected valid JSON structure with an 'ink' string property.",
+        content
+      );
+      throw new Error(
+        "Generated content is missing the expected JSON structure or 'ink' property."
+      );
+    }
+
+    return content;
+  }
+  public async startStory(title: string, description: string, plot: string) {
+    const storyBase = await this.generateStoryBase(title, description, plot);
+
+    const startScene = await this.generateStoryStartScene(
+      title,
+      description,
+      plot,
+      storyBase
+    );
+    console.log("Start scene generated successfully:", startScene);
+    return {
+      storyBase,
+      startScene,
+    };
   }
 }
