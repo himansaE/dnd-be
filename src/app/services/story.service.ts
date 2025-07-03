@@ -8,7 +8,10 @@ import {
   type ChatCompletionMessageParam,
 } from "../utils/openai.js";
 import { generateCharacterGenerationPrompts } from "../prompts/characterGeneration.js";
-import { generateStoryPrompts } from "../prompts/playStory.js";
+import {
+  generateStoryPrompts,
+  createContinuationUserMessage,
+} from "../prompts/playStory.js";
 import { writeFile, readFile, unlink, mkdir } from "fs/promises";
 import { promisify } from "util";
 import { exec } from "child_process";
@@ -394,5 +397,131 @@ export class StoryService {
       storyBase,
       startScene,
     };
+  }
+
+  public async continueStory(
+    conversationHistory: ChatCompletionMessageParam[],
+    currentSegmentId: string,
+    choiceId: string,
+    nextSegmentId: string
+  ) {
+    try {
+      const continuationSegments = await this.generateStoryContinuation(
+        conversationHistory,
+        currentSegmentId,
+        choiceId,
+        nextSegmentId
+      );
+
+      console.log(
+        "Story continuation generated successfully:",
+        continuationSegments
+      );
+      return {
+        segments: continuationSegments,
+        success: true,
+      };
+    } catch (error) {
+      console.error("Error generating story continuation:", error);
+      throw new Error("Failed to generate story continuation");
+    }
+  }
+
+  private async generateStoryContinuation(
+    conversationHistory: ChatCompletionMessageParam[],
+    currentSegmentId: string,
+    choiceId: string,
+    nextSegmentId: string
+  ): Promise<any> {
+    // Add the continuation user message to the conversation history
+    const continuationMessage = createContinuationUserMessage(nextSegmentId);
+
+    // Build the full conversation for the API call
+    const fullConversation: ChatCompletionMessageParam[] = [
+      ...conversationHistory,
+      continuationMessage,
+    ];
+
+    let retryCount = 0;
+    const maxRetries = 5;
+    let content: any;
+    let response: string = "";
+
+    while (retryCount < maxRetries) {
+      try {
+        if (retryCount === 0) {
+          console.log(
+            `Attempting story continuation from segment ${currentSegmentId} to ${nextSegmentId}...`
+          );
+          response = await createChat(fullConversation, {
+            response_format: {
+              type: "json_object",
+            },
+          });
+        } else {
+          console.warn(
+            `Retry attempt ${
+              retryCount + 1
+            }/${maxRetries} to regenerate continuation JSON...`
+          );
+
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1500 * retryCount)
+          );
+
+          const regenerationPrompts: ChatCompletionMessageParam[] = [
+            ...fullConversation,
+            {
+              role: "user",
+              content:
+                "The previous response was incomplete or malformed JSON. Please provide the **complete and valid JSON object** containing the continuation segments again.",
+            },
+          ];
+
+          response = await createChat(regenerationPrompts, {
+            response_format: {
+              type: "json_object",
+            },
+          });
+        }
+
+        content = JSON.parse(response);
+
+        console.log(
+          `Story continuation parsed successfully after ${
+            retryCount + 1
+          } attempts.`
+        );
+        break;
+      } catch (error: any) {
+        console.error(
+          `JSON parsing or API call failed on attempt ${retryCount + 1}:`,
+          error.message
+        );
+        console.log("Problematic response content:", response);
+
+        retryCount++;
+        if (retryCount >= maxRetries) {
+          console.error(
+            `Max retries (${maxRetries}) reached. Failed to get valid continuation JSON.`
+          );
+          throw new Error(
+            "Failed to generate story continuation due to persistent JSON errors after retries."
+          );
+        }
+      }
+    }
+
+    if (!content || typeof content !== "object" || content === null) {
+      console.error(
+        "Final result does not contain the expected valid JSON structure with segments.",
+        content
+      );
+      throw new Error(
+        "Generated content is missing the expected JSON structure or segments."
+      );
+    }
+
+    return content;
   }
 }

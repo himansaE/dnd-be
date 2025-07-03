@@ -27,7 +27,7 @@ function formatZodError(error: z.ZodError): string {
 Required environment variable ${path} is ${
         process.env[path] === undefined ? "missing" : "invalid"
       }
-Expected type: ${issue.expected || "unknown"}
+Expected type: ${"expected" in issue ? issue.expected : "unknown"}
 Received: ${
         process.env[path] === undefined ? "undefined" : typeof process.env[path]
       }`;
