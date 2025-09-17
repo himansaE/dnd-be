@@ -283,6 +283,10 @@ export class StoryService {
         response_format: {
           type: "json_object",
         },
+        meta: {
+          aiOperationId: "story.base",
+          label: "Generate story base",
+        },
       }
     );
 
@@ -318,6 +322,10 @@ export class StoryService {
             response_format: {
               type: "json_object",
             },
+            meta: {
+              aiOperationId: "story.start",
+              label: "Generate start scene",
+            },
           });
         } else {
           console.warn(
@@ -342,6 +350,10 @@ export class StoryService {
           response = await createChat(regenerationPrompts, {
             response_format: {
               type: "json_object",
+            },
+            meta: {
+              aiOperationId: "story.start.retry",
+              label: "Retry start scene",
             },
           });
         }
@@ -403,14 +415,16 @@ export class StoryService {
     conversationHistory: ChatCompletionMessageParam[],
     currentSegmentId: string,
     choiceId: string,
-    nextSegmentId: string
+    nextSegmentId: string,
+    flowHistory: string[]
   ) {
     try {
       const continuationSegments = await this.generateStoryContinuation(
         conversationHistory,
         currentSegmentId,
         choiceId,
-        nextSegmentId
+        nextSegmentId,
+        flowHistory
       );
 
       console.log(
@@ -431,10 +445,17 @@ export class StoryService {
     conversationHistory: ChatCompletionMessageParam[],
     currentSegmentId: string,
     choiceId: string,
-    nextSegmentId: string
+    nextSegmentId: string,
+    flowHistory: string[]
   ): Promise<any> {
     // Add the continuation user message to the conversation history
-    const continuationMessage = createContinuationUserMessage(nextSegmentId);
+    const continuationMessage = createContinuationUserMessage({
+      currentSegmentId,
+      choiceId,
+      nextSegmentId,
+      flowHistory,
+      previousSegmentIdsHint: flowHistory,
+    });
 
     // Build the full conversation for the API call
     const fullConversation: ChatCompletionMessageParam[] = [
@@ -456,6 +477,10 @@ export class StoryService {
           response = await createChat(fullConversation, {
             response_format: {
               type: "json_object",
+            },
+            meta: {
+              aiOperationId: "story.continue",
+              label: `Continue from ${currentSegmentId} -> ${nextSegmentId}`,
             },
           });
         } else {
@@ -481,6 +506,10 @@ export class StoryService {
           response = await createChat(regenerationPrompts, {
             response_format: {
               type: "json_object",
+            },
+            meta: {
+              aiOperationId: "story.continue.retry",
+              label: `Retry continue ${currentSegmentId} -> ${nextSegmentId}`,
             },
           });
         }

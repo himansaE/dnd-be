@@ -51,7 +51,12 @@ export class ChatService {
     const updatedMessages = [...messages, userMsg];
     let assistantMessage = "";
 
-    const stream = await createChatStream(updatedMessages);
+    const stream = await createChatStream(updatedMessages, {
+      meta: {
+        aiOperationId: "chat.session.stream",
+        label: `Chat session ${sessionId}`,
+      },
+    });
     for await (const chunk of stream) {
       assistantMessage += chunk;
       yield { content: chunk, isComplete: false } as StreamResponse;
@@ -107,7 +112,12 @@ export class ChatService {
     );
 
     let responseText = "";
-    const stream = await createChatStream(validatedMessages);
+    const stream = await createChatStream(validatedMessages, {
+      meta: {
+        aiOperationId: "chat.npc.stream",
+        label: `NPC ${npcId} -> Player ${playerId}`,
+      },
+    });
 
     for await (const chunk of stream) {
       responseText += chunk;

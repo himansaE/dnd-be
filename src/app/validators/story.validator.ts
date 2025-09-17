@@ -18,4 +18,5 @@ export const storyContinueSchema = z.object({
   currentSegmentId: z.string().min(1, "Current segment ID is required"),
   choiceId: z.string().min(1, "Choice ID is required"),
   nextSegmentId: z.string().min(1, "Next segment ID is required"),
+  flowHistory: z.array(z.string()).optional(),
 });

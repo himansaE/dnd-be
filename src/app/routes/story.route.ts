@@ -32,7 +32,8 @@ storyRoute.post(
         data.conversationHistory,
         data.currentSegmentId,
         data.choiceId,
-        data.nextSegmentId
+        data.nextSegmentId,
+        data.flowHistory ?? []
       )
       .then((response) => {
         return c.json(response, 200);

@@ -27,23 +27,44 @@ export class StoryGeneratorService {
   async generateStoryOptions(): Promise<
     [StoryOption, StoryOption, StoryOption]
   > {
+    const batchId = `${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    const batchStart = Date.now();
+    console.log("[image-batch] start", { batchId });
+
     const response = await createChat(generateStoryMessage, {
       response_format: {
         type: "json_object",
+      },
+      meta: {
+        aiOperationId: "story-generator.generate-options",
+        aiRequestId: `${batchId}`,
+        label: "Generate story options",
       },
     });
 
     const content = JSON.parse(response) as StoryOptions;
     const optionsWithImages = Object.entries(content).map(
       async ([key, option]) => {
-        const imgRes = await this.generatePreviewImage(option.card_background);
+        const imgStart = Date.now();
+        const prompt = option.card_background;
+        const imgRes = await this.generatePreviewImage(prompt);
+        const imgMs = Date.now() - imgStart;
         if (!imgRes.success) {
           console.error(
-            `Failed to generate image for prompt "${option.card_background}": ${imgRes.error}`
+            `Failed to generate image`,
+            { batchId, prompt, ms: imgMs, error: imgRes.error }
           );
           content[key as keyof StoryOptions].card_background = "";
         } else {
           content[key as keyof StoryOptions].card_background = imgRes.url;
+          console.log("[image] complete", {
+            batchId,
+            prompt,
+            ms: imgMs,
+            urlLength: imgRes.url.length,
+          });
         }
 
         return option;
@@ -51,6 +72,9 @@ export class StoryGeneratorService {
     );
 
     await Promise.all(optionsWithImages);
+
+    const totalMs = Date.now() - batchStart;
+    console.log("[image-batch] complete", { batchId, totalMs });
 
     return [content.option_1, content.option_2, content.option_3];
   }
@@ -62,6 +86,7 @@ export class StoryGeneratorService {
     url.searchParams.append("prompt", prompt);
 
     try {
+      const start = Date.now();
       const req = await fetch(url, {
         headers: {
           "x-token": getEnvVariable("WORKER_TOKEN", ""),
@@ -77,6 +102,7 @@ export class StoryGeneratorService {
         );
       }
 
+      const ms = Date.now() - start;
       return {
         success: true,
         url: await req.text(), // Assume worker returns URL as plain text

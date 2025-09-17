@@ -16,6 +16,14 @@ chat.post("/sessions", async (c) => {
 chat.post("/sessions/:id/messages", async (c) => {
   const sessionId = c.req.param("id");
   const { message } = await c.req.json();
+  const requestId = `${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+  const startTs = Date.now();
+  let firstChunkLogged = false;
+  let ttftMs: number | null = null;
+
+  console.log("[chat] start", { requestId, sessionId });
 
   c.header("Content-Type", "text/event-stream");
   c.header("Cache-Control", "no-cache");
@@ -27,8 +35,20 @@ chat.post("/sessions/:id/messages", async (c) => {
     new ReadableStream({
       async start(controller) {
         for await (const chunk of stream) {
+          if (!firstChunkLogged) {
+            firstChunkLogged = true;
+            ttftMs = Date.now() - startTs;
+            console.log("[chat] ttft", { requestId, sessionId, ttftMs });
+          }
           controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
           if (chunk.isComplete) {
+            const totalMs = Date.now() - startTs;
+            console.log("[chat] complete", {
+              requestId,
+              sessionId,
+              totalMs,
+              ttftMs,
+            });
             controller.close();
           }
         }
