@@ -516,6 +516,13 @@ export class StoryService {
 
         content = JSON.parse(response);
 
+        // Sanitize provider output: flatten nested segments, fix character keys, filter prior IDs
+        content = this.sanitizeContinuationContent(
+          content,
+          flowHistory ?? [],
+          nextSegmentId
+        );
+
         console.log(
           `Story continuation parsed successfully after ${
             retryCount + 1
@@ -552,5 +559,51 @@ export class StoryService {
     }
 
     return content;
+  }
+
+  private sanitizeContinuationContent(
+    raw: any,
+    previousIds: string[],
+    requiredId: string
+  ) {
+    const segmentsContainer = raw?.segments?.segments
+      ? raw.segments
+      : raw;
+    const segmentsObj: Record<string, any> = segmentsContainer?.segments ?? segmentsContainer ?? {};
+
+    const previous = new Set((previousIds || []).map((s) => String(s)));
+    const result: Record<string, any> = {};
+
+    const normalizeNarrativeItem = (item: any) => {
+      if (!item || typeof item !== "object") return { type: "narrator", text: "" };
+      if (item.type === "character") {
+        const name = item.name ?? item.speaker ?? "";
+        const dialogue = item.dialogue ?? item.text ?? "";
+        return { type: "character", name, dialogue };
+      }
+      const text = item.text ?? item.dialogue ?? "";
+      return { type: "narrator", text };
+    };
+
+    const normalizeSegment = (seg: any) => {
+      const narrative = Array.isArray(seg?.narrative_content)
+        ? seg.narrative_content.map(normalizeNarrativeItem)
+        : [];
+      const choices = Array.isArray(seg?.choices)
+        ? seg.choices.map((c: any) => ({
+            text: String(c?.text ?? ""),
+            next_segment_id: String(c?.next_segment_id ?? ""),
+          }))
+        : [];
+      return { narrative_content: narrative, choices };
+    };
+
+    for (const key of Object.keys(segmentsObj)) {
+      // keep requiredId even if it appeared in history; otherwise skip duplicates
+      if (previous.has(key) && key !== requiredId) continue;
+      result[key] = normalizeSegment(segmentsObj[key]);
+    }
+
+    return { segments: result };
   }
 }
