@@ -236,3 +236,13 @@ model StateItem {
   @@index([inventoryId])
   @@index([questStepId])
 }
+
+model Character {
+  id          String   @id @default(uuid())
+  name        String
+  type        String
+  ability     String?
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
