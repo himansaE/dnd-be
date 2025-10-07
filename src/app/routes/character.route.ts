@@ -54,83 +54,189 @@ characterRoute.get(
 
 // Create (supports JSON or multipart/form-data with image)
 characterRoute.post("/", async (c) => {
-  const contentType = c.req.header("content-type") ?? "";
-  let data: any = {};
-  let file: File | null = null;
+  const requestId = `create-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+  console.log(`[${requestId}] ===== START CREATE CHARACTER =====`);
+  console.log(`[${requestId}] Method: ${c.req.method}, Path: ${c.req.path}`);
 
-  if (contentType.includes("multipart/form-data")) {
-    const form = await c.req.formData();
-    data = {
-      name: String(form.get("name") ?? ""),
-      type: String(form.get("type") ?? ""),
-      ability: form.get("ability") ? String(form.get("ability")) : undefined,
-      description: form.get("description")
-        ? String(form.get("description"))
-        : undefined,
-    };
-    const img = form.get("image");
-    if (img && typeof img !== "string") file = img as File;
-  } else {
-    try {
-      data = await c.req.json();
-    } catch (e) {
-      data = {};
+  try {
+    const contentType = c.req.header("content-type") ?? "";
+    console.log(`[${requestId}] Content-Type: ${contentType}`);
+
+    let data: any = {};
+    let file: File | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      console.log(`[${requestId}] Processing multipart/form-data`);
+      const form = await c.req.formData();
+      console.log(`[${requestId}] FormData keys:`, Array.from(form.keys()));
+
+      data = {
+        name: String(form.get("name") ?? ""),
+        type: String(form.get("type") ?? ""),
+        ability: form.get("ability") ? String(form.get("ability")) : undefined,
+        description: form.get("description")
+          ? String(form.get("description"))
+          : undefined,
+      };
+      console.log(`[${requestId}] Parsed data:`, {
+        name: data.name,
+        type: data.type,
+        hasAbility: !!data.ability,
+        hasDescription: !!data.description,
+      });
+
+      const img = form.get("image");
+      if (img && typeof img !== "string") {
+        file = img as File;
+        console.log(`[${requestId}] Image file found:`, {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        });
+      } else {
+        console.log(`[${requestId}] No image file in form`);
+      }
+    } else {
+      console.log(`[${requestId}] Processing JSON body`);
+      try {
+        data = await c.req.json();
+        console.log(`[${requestId}] Parsed JSON:`, {
+          name: data?.name,
+          type: data?.type,
+        });
+      } catch (e) {
+        console.error(`[${requestId}] Failed to parse JSON:`, e);
+        data = {};
+      }
     }
-  }
 
-  const parsed = characterCreateSchema.safeParse(data);
-  if (!parsed.success) {
+    console.log(`[${requestId}] Validating with Zod schema...`);
+    const parsed = characterCreateSchema.safeParse(data);
+    if (!parsed.success) {
+      console.error(
+        `[${requestId}] Validation FAILED:`,
+        parsed.error.flatten()
+      );
+      return c.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        400
+      );
+    }
+    console.log(`[${requestId}] Validation PASSED`);
+
+    console.log(`[${requestId}] Calling service.create with file: ${!!file}`);
+    const item = await service.create(parsed.data, file ? { file } : undefined);
+    console.log(`[${requestId}] Character created successfully:`, {
+      id: item.id,
+      name: item.name,
+      imageKey: (item as any).imageKey,
+      imageUrl: (item as any).imageUrl,
+    });
+
+    console.log(`[${requestId}] ===== END CREATE CHARACTER (SUCCESS) =====`);
+    return c.json(item, 201);
+  } catch (err: any) {
+    console.error(`[${requestId}] ===== ERROR IN CREATE CHARACTER =====`);
+    console.error(`[${requestId}]`, err);
+    console.error(`[${requestId}] Stack:`, err.stack);
     return c.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      400
+      { error: "Internal Server Error", message: err.message },
+      500
     );
   }
-
-  const item = await service.create(parsed.data, file ? { file } : undefined);
-  return c.json(item, 201);
 });
 
 // Update (supports JSON or multipart/form-data with image)
 characterRoute.put("/:id", async (c) => {
   const id = c.req.param("id");
-  const contentType = c.req.header("content-type") ?? "";
-  let data: any = {};
-  let file: File | null = null;
+  const requestId = `update-${id}-${Date.now().toString(36)}`;
+  console.log(`[${requestId}] ===== START UPDATE CHARACTER =====`);
+  console.log(`[${requestId}] ID: ${id}`);
 
-  if (contentType.includes("multipart/form-data")) {
-    const form = await c.req.formData();
-    data = {
-      name: form.get("name") ? String(form.get("name")) : undefined,
-      type: form.get("type") ? String(form.get("type")) : undefined,
-      ability: form.get("ability") ? String(form.get("ability")) : undefined,
-      description: form.get("description")
-        ? String(form.get("description"))
-        : undefined,
-    };
-    const img = form.get("image");
-    if (img && typeof img !== "string") file = img as File;
-  } else {
-    try {
-      data = await c.req.json();
-    } catch (e) {
-      data = {};
+  try {
+    const contentType = c.req.header("content-type") ?? "";
+    console.log(`[${requestId}] Content-Type: ${contentType}`);
+
+    let data: any = {};
+    let file: File | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      console.log(`[${requestId}] Processing multipart/form-data`);
+      const form = await c.req.formData();
+      console.log(`[${requestId}] FormData keys:`, Array.from(form.keys()));
+
+      data = {
+        name: form.get("name") ? String(form.get("name")) : undefined,
+        type: form.get("type") ? String(form.get("type")) : undefined,
+        ability: form.get("ability") ? String(form.get("ability")) : undefined,
+        description: form.get("description")
+          ? String(form.get("description"))
+          : undefined,
+      };
+      console.log(`[${requestId}] Parsed data:`, data);
+
+      const img = form.get("image");
+      if (img && typeof img !== "string") {
+        file = img as File;
+        console.log(`[${requestId}] Image file found:`, {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        });
+      } else {
+        console.log(`[${requestId}] No image file in form`);
+      }
+    } else {
+      console.log(`[${requestId}] Processing JSON body`);
+      try {
+        data = await c.req.json();
+        console.log(`[${requestId}] Parsed JSON:`, data);
+      } catch (e) {
+        console.error(`[${requestId}] Failed to parse JSON:`, e);
+        data = {};
+      }
     }
-  }
 
-  const parsed = characterUpdateSchema.safeParse(data);
-  if (!parsed.success) {
+    console.log(`[${requestId}] Validating with Zod schema...`);
+    const parsed = characterUpdateSchema.safeParse(data);
+    if (!parsed.success) {
+      console.error(
+        `[${requestId}] Validation FAILED:`,
+        parsed.error.flatten()
+      );
+      return c.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        400
+      );
+    }
+    console.log(`[${requestId}] Validation PASSED`);
+
+    console.log(`[${requestId}] Calling service.update with file: ${!!file}`);
+    const item = await service.update(
+      id,
+      parsed.data,
+      file ? { file } : undefined
+    );
+    console.log(`[${requestId}] Character updated successfully:`, {
+      id: item.id,
+      name: item.name,
+      imageKey: (item as any).imageKey,
+      imageUrl: (item as any).imageUrl,
+    });
+
+    console.log(`[${requestId}] ===== END UPDATE CHARACTER (SUCCESS) =====`);
+    return c.json(item, 200);
+  } catch (err: any) {
+    console.error(`[${requestId}] ===== ERROR IN UPDATE CHARACTER =====`);
+    console.error(`[${requestId}]`, err);
+    console.error(`[${requestId}] Stack:`, err.stack);
     return c.json(
-      { error: "Validation failed", details: parsed.error.flatten() },
-      400
+      { error: "Internal Server Error", message: err.message },
+      500
     );
   }
-
-  const item = await service.update(
-    id,
-    parsed.data,
-    file ? { file } : undefined
-  );
-  return c.json(item, 200);
 });
 
 // Delete
