@@ -52,28 +52,86 @@ characterRoute.get(
   }
 );
 
-// Create
-characterRoute.post(
-  "/",
-  zValidator("json", characterCreateSchema),
-  async (c) => {
-    const body = c.req.valid("json");
-    const item = await service.create(body);
-    return c.json(item, 201);
-  }
-);
+// Create (supports JSON or multipart/form-data with image)
+characterRoute.post("/", async (c) => {
+  const contentType = c.req.header("content-type") ?? "";
+  let data: any = {};
+  let file: File | null = null;
 
-// Update
-characterRoute.put(
-  "/:id",
-  zValidator("json", characterUpdateSchema),
-  async (c) => {
-    const id = c.req.param("id");
-    const body = c.req.valid("json");
-    const item = await service.update(id, body);
-    return c.json(item, 200);
+  if (contentType.includes("multipart/form-data")) {
+    const form = await c.req.formData();
+    data = {
+      name: String(form.get("name") ?? ""),
+      type: String(form.get("type") ?? ""),
+      ability: form.get("ability") ? String(form.get("ability")) : undefined,
+      description: form.get("description")
+        ? String(form.get("description"))
+        : undefined,
+    };
+    const img = form.get("image");
+    if (img && typeof img !== "string") file = img as File;
+  } else {
+    try {
+      data = await c.req.json();
+    } catch (e) {
+      data = {};
+    }
   }
-);
+
+  const parsed = characterCreateSchema.safeParse(data);
+  if (!parsed.success) {
+    return c.json(
+      { error: "Validation failed", details: parsed.error.flatten() },
+      400
+    );
+  }
+
+  const item = await service.create(parsed.data, file ? { file } : undefined);
+  return c.json(item, 201);
+});
+
+// Update (supports JSON or multipart/form-data with image)
+characterRoute.put("/:id", async (c) => {
+  const id = c.req.param("id");
+  const contentType = c.req.header("content-type") ?? "";
+  let data: any = {};
+  let file: File | null = null;
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await c.req.formData();
+    data = {
+      name: form.get("name") ? String(form.get("name")) : undefined,
+      type: form.get("type") ? String(form.get("type")) : undefined,
+      ability: form.get("ability") ? String(form.get("ability")) : undefined,
+      description: form.get("description")
+        ? String(form.get("description"))
+        : undefined,
+    };
+    const img = form.get("image");
+    if (img && typeof img !== "string") file = img as File;
+  } else {
+    try {
+      data = await c.req.json();
+    } catch (e) {
+      data = {};
+    }
+  }
+
+  const parsed = characterUpdateSchema.safeParse(data);
+  if (!parsed.success) {
+    return c.json(
+      { error: "Validation failed", details: parsed.error.flatten() },
+      400
+    );
+  }
+
+  const item = await service.update(
+    id,
+    parsed.data,
+    file ? { file } : undefined
+  );
+  return c.json(item, 200);
+});
 
 // Delete
 characterRoute.delete("/:id", async (c) => {

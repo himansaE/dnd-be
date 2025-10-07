@@ -15,6 +15,12 @@ const envSchema = z.object({
   WORKER_URL: z.string(),
   WORKER_TOKEN: z.string(),
   BUCKET_URL: z.string(),
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().optional(),
+  R2_REGION: z.string().optional(),
+  R2_ENDPOINT: z.string().optional(),
 });
 
 type Env = z.infer<typeof envSchema>;

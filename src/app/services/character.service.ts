@@ -1,7 +1,9 @@
 import { CharacterRepository } from "@repositories/character.repository.js";
+import { UploadService } from "@services/upload.service.js";
 
 export class CharacterService {
   private repo = new CharacterRepository();
+  private uploader = new UploadService();
 
   async list(page = 1, pageSize = 20) {
     const take = pageSize;
@@ -43,14 +45,26 @@ export class CharacterService {
     };
   }
 
-  async create(data: {
-    userId?: string;
-    name: string;
-    type: string;
-    ability?: string;
-    description?: string;
-  }) {
-    return this.repo.create(data);
+  async create(
+    data: {
+      name: string;
+      type: string;
+      ability?: string;
+      description?: string;
+      imageKey?: string;
+      imageUrl?: string;
+    },
+    options?: { file?: File | { bytes: Buffer; contentType: string } }
+  ) {
+    const payload: any = { ...data };
+    if (options?.file) {
+      const { imageKey, imageUrl } = await this.uploadIfNeeded(options.file);
+      if (imageKey && imageUrl) {
+        payload.imageKey = imageKey;
+        payload.imageUrl = imageUrl;
+      }
+    }
+    return this.repo.create(payload);
   }
 
   async update(
@@ -60,9 +74,44 @@ export class CharacterService {
       type: string;
       ability?: string;
       description?: string;
-    }>
+      imageKey?: string;
+      imageUrl?: string;
+    }>,
+    options?: { file?: File | { bytes: Buffer; contentType: string } }
   ) {
-    return this.repo.update(id, data);
+    const updates: any = { ...data };
+    if (options?.file) {
+      const { imageKey, imageUrl } = await this.uploadIfNeeded(options.file);
+      if (imageKey && imageUrl) {
+        updates.imageKey = imageKey;
+        updates.imageUrl = imageUrl;
+      }
+    }
+    return this.repo.update(id, updates);
+  }
+
+  private async uploadIfNeeded(
+    file: File | { bytes: Buffer; contentType: string }
+  ) {
+    try {
+      let bytes: Buffer;
+      let contentType: string;
+      if ("bytes" in file) {
+        bytes = file.bytes;
+        contentType = file.contentType;
+      } else {
+        const ab = await (file as File).arrayBuffer();
+        bytes = Buffer.from(ab);
+        contentType = (file as File).type || "application/octet-stream";
+      }
+      const { key, url } = await this.uploader.putObject({
+        body: bytes,
+        contentType,
+      });
+      return { imageKey: key, imageUrl: url };
+    } catch {
+      return { imageKey: undefined, imageUrl: undefined };
+    }
   }
 
   async remove(id: string) {

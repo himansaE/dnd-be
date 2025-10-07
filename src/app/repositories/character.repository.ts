@@ -49,6 +49,8 @@ export class CharacterRepository {
     type: string;
     ability?: string;
     description?: string;
+    imageKey?: string;
+    imageUrl?: string;
   }) {
     return prisma.character.create({ data });
   }
@@ -60,6 +62,8 @@ export class CharacterRepository {
       type: string;
       ability?: string;
       description?: string;
+      imageKey?: string;
+      imageUrl?: string;
     }>
   ) {
     return prisma.character.update({ where: { id }, data });
