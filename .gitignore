@@ -1,3 +1,4 @@
+logs/
 # dev
 .yarn/
 !.yarn/releases

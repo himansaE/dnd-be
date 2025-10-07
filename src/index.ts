@@ -1,16 +1,23 @@
-import { serve } from '@hono/node-server'
-import { Hono } from 'hono'
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { logger } from "hono/logger";
+import { chat } from "./app/routes/chat.route.js";
+import { getEnvVariable } from "./app/utils/env.js";
+import { storyGenerator } from "./app/routes/story-generator.route.js";
+import { cors } from "hono/cors";
+import router from "./app/routes/index.route.js";
 
-const app = new Hono()
+const app = new Hono();
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!')
-})
+app.use("*", logger());
+app.use("*", cors());
 
-const port = 3000
-console.log(`Server is running on http://localhost:${port}`)
+app.route("/api", router);
 
+const PORT = Number.parseInt(getEnvVariable("PORT", "3000"));
 serve({
   fetch: app.fetch,
-  port
-})
+  port: PORT,
+});
+
+console.log(`Server running at http://localhost:${PORT}`);

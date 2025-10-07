@@ -1,0 +1,248 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum QuestStatus {
+  ACTIVE
+  COMPLETED
+  FAILED
+  NOT_STARTED
+}
+
+enum ItemType {
+  WEAPON
+  ARMOR
+  CONSUMABLE
+  QUEST_ITEM
+  MISC
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  progress      PlayerProgress?
+  chatHistories ChatHistory[]
+  memories      NPCMemory[]    @relation("PlayerMemories")
+}
+
+model ChatHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  messages  Message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Message {
+  id            String      @id @default(uuid())
+  chatHistoryId String
+  chatHistory   ChatHistory @relation(fields: [chatHistoryId], references: [id])
+  role         String      // system, user, or assistant
+  content      String      @db.Text
+  createdAt    DateTime    @default(now())
+
+  @@index([chatHistoryId])
+  NPCMemory NPCMemory[]
+}
+
+model NPC {
+  id          String      @id @default(uuid())
+  name        String
+  role        String
+  background  String
+  personality String
+  knowledge   String[]
+  memories    NPCMemory[]
+  quests      Quest[]
+  location    String
+  faction     String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model NPCMemory {
+  id             String   @id @default(uuid())
+  npcId          String
+  playerId       String
+  interaction    Message[]
+  sentiment      Float
+  key_facts      String[]
+  lastInteraction DateTime
+  npc            NPC         @relation(fields: [npcId], references: [id])
+  player         User        @relation("PlayerMemories", fields: [playerId], references: [id])
+  quest          Quest?      @relation(fields: [questId], references: [id])
+  questId        String?
+
+  @@index([npcId, playerId])
+}
+
+model PlayerProgress {
+  id              String    @id @default(uuid())
+  user            User      @relation(fields: [userId], references: [id])
+  userId          String    @unique
+  activeQuests    PlayerQuest[]
+  completedQuests String[]
+  knownLocations  String[]
+  reputation      Reputation[]
+  inventory       InventoryItem[]
+  storyState      StateItem[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model PlayerQuest {
+  id           String      @id @default(uuid())
+  questId      String
+  quest        Quest       @relation(fields: [questId], references: [id])
+  progress     PlayerProgress @relation(fields: [progressId], references: [id])
+  progressId   String
+  status       QuestStatus @default(NOT_STARTED)
+  currentStep  Int        @default(0)
+  startedAt    DateTime   @default(now())
+  completedAt  DateTime?
+
+  @@index([questId])
+  @@index([progressId])
+}
+
+model Quest {
+  id           String    @id @default(uuid())
+  title        String
+  description  String
+  steps        QuestStep[]
+  npcId        String
+  npc          NPC       @relation(fields: [npcId], references: [id])
+  memories     NPCMemory[]
+  requirements QuestRequirement?
+  rewards      QuestReward?
+  playerQuests PlayerQuest[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([npcId])
+}
+
+model QuestStep {
+  id          String  @id @default(uuid())
+  questId     String
+  quest       Quest   @relation(fields: [questId], references: [id])
+  description String
+  order       Int
+  requirements StateItem[]
+
+  @@index([questId])
+}
+
+model QuestRequirement {
+  id          String  @id @default(uuid())
+  questId     String  @unique
+  quest       Quest   @relation(fields: [questId], references: [id])
+  reputation  Reputation[]
+  items       RequiredItem[]
+  quests      String[]  // Array of required quest IDs
+}
+
+model QuestReward {
+  id          String  @id @default(uuid())
+  questId     String  @unique
+  quest       Quest   @relation(fields: [questId], references: [id])
+  reputation  Reputation[]
+  items       RewardItem[]
+  locations   String[]
+}
+
+model InventoryItem {
+  id          String    @id @default(uuid())
+  itemId      String    // Reference to a game item database
+  name        String
+  quantity    Int
+  type        ItemType
+  metadata    StateItem[]
+  progress    PlayerProgress @relation(fields: [progressId], references: [id])
+  progressId  String
+
+  @@index([progressId])
+}
+
+model RequiredItem {
+  id          String    @id @default(uuid())
+  itemId      String
+  quantity    Int       @default(1)
+  requirement QuestRequirement @relation(fields: [requirementId], references: [id])
+  requirementId String
+
+  @@index([requirementId])
+}
+
+model RewardItem {
+  id          String    @id @default(uuid())
+  itemId      String
+  quantity    Int       @default(1)
+  reward      QuestReward @relation(fields: [rewardId], references: [id])
+  rewardId    String
+
+  @@index([rewardId])
+}
+
+model Reputation {
+  id          String    @id @default(uuid())
+  faction     String
+  amount      Int
+  progress    PlayerProgress? @relation(fields: [progressId], references: [id])
+  progressId  String?
+  requirement QuestRequirement? @relation(fields: [requirementId], references: [id])
+  requirementId String?
+  reward      QuestReward? @relation(fields: [rewardId], references: [id])
+  rewardId    String?
+
+  @@index([progressId])
+  @@index([requirementId])
+  @@index([rewardId])
+}
+
+model StateItem {
+  id          String    @id @default(uuid())
+  key         String
+  value       String
+  progress    PlayerProgress? @relation(fields: [progressId], references: [id])
+  progressId  String?
+  inventory   InventoryItem? @relation(fields: [inventoryId], references: [id])
+  inventoryId String?
+  questStep   QuestStep? @relation(fields: [questStepId], references: [id])
+  questStepId String?
+
+  @@index([progressId])
+  @@index([inventoryId])
+  @@index([questStepId])
+}
+
+model Character {
+  id          String   @id @default(uuid())
+  name        String
+  type        String
+  ability     String?
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -2,14 +2,39 @@
   "name": "dnd-be",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "type:check": "tsc --noEmit",
+    "type:watch": "tsc --noEmit --watch",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init-characters"
   },
   "dependencies": {
+    "@clerk/backend": "^1.23.7",
+    "@hono/clerk-auth": "^2.0.0",
     "@hono/node-server": "^1.13.7",
-    "hono": "^4.6.17"
+    "@hono/zod-validator": "^0.4.3",
+    "@prisma/client": "^6.16.3",
+    "child_process": "^1.0.2",
+    "dotenv": "^16.4.7",
+    "fs": "0.0.1-security",
+    "hono": "^4.6.17",
+    "openai": "^4.83.0",
+    "util": "^0.12.5",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
-    "tsx": "^4.7.1"
+    "prisma": "^6.16.3",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  },
+  "pnpm": {
+    "allowedBuiltDependencies": [
+      "prisma",
+      "@prisma/client",
+      "@prisma/engines"
+    ]
   }
 }
