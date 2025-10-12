@@ -473,8 +473,11 @@ export class StoryService {
         "Story continuation generated successfully:",
         continuationSegments
       );
+
+      // continuationSegments already has { segments: {...} } structure
+      // Don't wrap it again!
       return {
-        segments: continuationSegments,
+        ...continuationSegments,
         success: true,
       };
     } catch (error) {

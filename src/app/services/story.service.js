@@ -322,8 +322,10 @@ export class StoryService {
         try {
             const continuationSegments = await this.generateStoryContinuation(conversationHistory, currentSegmentId, choiceId, nextSegmentId, flowHistory);
             console.log("Story continuation generated successfully:", continuationSegments);
+            // continuationSegments already has { segments: {...} } structure
+            // Don't wrap it again!
             return {
-                segments: continuationSegments,
+                ...continuationSegments,
                 success: true,
             };
         }
