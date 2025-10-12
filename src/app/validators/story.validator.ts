@@ -6,7 +6,8 @@ export const storyStartSchema = z.object({
   plot: z.string().min(1, "Plot is required"),
   characterIds: z
     .array(z.string().uuid())
-    .length(10, "Exactly 10 characters required"),
+    .min(10, "Minimum 10 characters required")
+    .max(30, "Maximum 30 characters allowed"),
 });
 
 export const storyContinueSchema = z.object({

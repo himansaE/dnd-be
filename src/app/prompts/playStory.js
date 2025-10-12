@@ -1,5 +1,3 @@
-import type { ChatCompletionMessageParam } from "../utils/openai.js";
-
 export const storySystemPrompt = `
 You are a medieval fantasy storyteller powering a chat-based Dungeons & Dragons game by generating sections of the narrative graph in JSON format. Your goal is to create an immersive, dynamic, and natural-feeling experience with engaging character interactions.
 
@@ -81,7 +79,6 @@ Your task is to generate JSON data representing a section of the story graph. Th
 
 `;
 /* eslint-enable max-len */
-
 // --- Initial User Prompt Base ---
 // This base content is used by generateStoryPrompts for the *first* API call.
 const storyStartUserPromptBase = `
@@ -104,53 +101,37 @@ Each character object includes:
 
 **REMINDER**: When generating dialogue for a character, the JSON MUST include their "characterId" field with the exact UUID from the list above.
 `;
-
 // --- Initial Prompt Generation Function ---
 // This function generates the [System, User] message pair for the *first* API call.
 // Reverted parameter type as requested.
-export const generateStoryPrompts = (
-  title: string,
-  description: string,
-  plot: string,
-  opening: string,
-  characters: string
-): ChatCompletionMessageParam[] => {
-  // Use the base prompt content and interpolate the initial story parameters
-  const userPromptContent = storyStartUserPromptBase
-    .replace("{{title}}", title)
-    .replace("{{description}}", description)
-    .replace("{{plot}}", plot)
-    .replace("{{opening}}", opening)
-    .replace("{{characters}}", characters);
-
-  const systemPrompt: ChatCompletionMessageParam = {
-    role: "system",
-    content: storySystemPrompt,
-  };
-  const userPrompt: ChatCompletionMessageParam = {
-    role: "user",
-    content: userPromptContent,
-  };
-
-  return [systemPrompt, userPrompt]; // Return the pair of messages
+export const generateStoryPrompts = (title, description, plot, opening, characters) => {
+    // Use the base prompt content and interpolate the initial story parameters
+    const userPromptContent = storyStartUserPromptBase
+        .replace("{{title}}", title)
+        .replace("{{description}}", description)
+        .replace("{{plot}}", plot)
+        .replace("{{opening}}", opening)
+        .replace("{{characters}}", characters);
+    const systemPrompt = {
+        role: "system",
+        content: storySystemPrompt,
+    };
+    const userPrompt = {
+        role: "user",
+        content: userPromptContent,
+    };
+    return [systemPrompt, userPrompt]; // Return the pair of messages
 };
-
 // --- Continuation User Message Generation Function ---
 // This function generates the *user message* that should be added to the history
 // *before* calling the API to request a CONTINUATION section (Format 2).
-export const createContinuationUserMessage = (params: {
-  currentSegmentId: string;
-  choiceId: string;
-  nextSegmentId: string;
-  flowHistory: string[];
-}): ChatCompletionMessageParam => {
-  // This message tells the API *which* segment ID to start from and which format to use.
-  // Provide additional context to help the AI generate the correct segment.
-  const { currentSegmentId, choiceId, nextSegmentId, flowHistory } = params;
-
-  return {
-    role: "user",
-    content: `The player chose: "${choiceId}" from segment "${currentSegmentId}".
+export const createContinuationUserMessage = (params) => {
+    // This message tells the API *which* segment ID to start from and which format to use.
+    // Provide additional context to help the AI generate the correct segment.
+    const { currentSegmentId, choiceId, nextSegmentId, flowHistory } = params;
+    return {
+        role: "user",
+        content: `The player chose: "${choiceId}" from segment "${currentSegmentId}".
 
 Generate segments starting from ID "${nextSegmentId}", following Format 2 as described in the System Prompt.
 
@@ -159,5 +140,5 @@ Generate segments starting from ID "${nextSegmentId}", following Format 2 as des
 Previously visited segments (DO NOT regenerate these): ${flowHistory.join(", ")}
 
 Generate approximately 6-8 NEW interconnected segments starting with "${nextSegmentId}".`,
-  };
+    };
 };

@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { CharacterService } from "@services/character.service.js";
+import { CharacterSelectionService } from "@services/characterSelection.service.js";
 import {
   characterCreateSchema,
   characterUpdateSchema,
   characterIdsQuerySchema,
   characterSearchQuerySchema,
 } from "@/app/validators/character.validator.js";
+import { z } from "zod";
 
 const characterRoute = new Hono();
 const service = new CharacterService();
@@ -245,5 +247,51 @@ characterRoute.delete("/:id", async (c) => {
   const item = await service.remove(id);
   return c.json(item, 200);
 });
+
+// AI Auto-Select Characters for Story
+characterRoute.post(
+  "/auto-select",
+  zValidator(
+    "json",
+    z.object({
+      title: z.string().min(1, "Title is required"),
+      description: z.string().min(1, "Description is required"),
+      plot: z.string().min(1, "Plot is required"),
+    })
+  ),
+  async (c) => {
+    const requestId = `auto-select-${Date.now().toString(36)}`;
+    console.log(`[${requestId}] ===== AI CHARACTER AUTO-SELECTION START =====`);
+
+    try {
+      const { title, description, plot } = c.req.valid("json");
+      console.log(`[${requestId}] Story: "${title}"`);
+
+      const selectionService = new CharacterSelectionService();
+      const result = await selectionService.selectCharactersForStory(
+        title,
+        description,
+        plot
+      );
+
+      console.log(
+        `[${requestId}] SUCCESS: Selected ${result.characters.length} characters`
+      );
+      console.log(`[${requestId}] ===== AI CHARACTER AUTO-SELECTION END =====`);
+
+      return c.json(result, 200);
+    } catch (error: any) {
+      console.error(`[${requestId}] ERROR:`, error);
+      console.error(`[${requestId}] Stack:`, error.stack);
+      return c.json(
+        {
+          error: "Failed to auto-select characters",
+          message: error.message ?? "Unknown error",
+        },
+        500
+      );
+    }
+  }
+);
 
 export { characterRoute };

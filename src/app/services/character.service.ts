@@ -157,7 +157,8 @@ export class CharacterService {
           `[CharacterService.uploadIfNeeded] File is Buffer object, size: ${file.bytes.length}`
         );
         bytes = file.bytes;
-        contentType = file.contentType;
+        contentType = (file as { bytes: Buffer; contentType: string })
+          .contentType;
       } else {
         // It's a File object (from Hono's FormData)
         console.log(

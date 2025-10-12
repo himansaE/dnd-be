@@ -1,0 +1,52 @@
+import { z } from "zod";
+import { config } from "dotenv";
+// Initialize dotenv
+config();
+const envSchema = z.object({
+    PORT: z.string(),
+    DATABASE_URL: z.string(),
+    OPENAI_APIKEY: z.string(),
+    OPENAI_BASEURL: z.string(),
+    OPENAI_MODEL_NAME: z.string(),
+    WORKER_URL: z.string(),
+    WORKER_TOKEN: z.string(),
+    BUCKET_URL: z.string(),
+    R2_ACCOUNT_ID: z.string().optional(),
+    R2_ACCESS_KEY_ID: z.string().optional(),
+    R2_SECRET_ACCESS_KEY: z.string().optional(),
+    R2_BUCKET_NAME: z.string().optional(),
+    R2_REGION: z.string().optional(),
+    R2_ENDPOINT: z.string().optional(),
+});
+function formatZodError(error) {
+    return error.issues
+        .map((issue) => {
+        const path = issue.path.join(".");
+        return `❌ ${path}: ${issue.message}
+Required environment variable ${path} is ${process.env[path] === undefined ? "missing" : "invalid"}
+Expected type: ${"expected" in issue ? issue.expected : "unknown"}
+Received: ${process.env[path] === undefined ? "undefined" : typeof process.env[path]}`;
+    })
+        .join("\n\n");
+}
+export function validateEnvs() {
+    try {
+        const parsedEnvs = envSchema.safeParse(process.env);
+        if (!parsedEnvs.success) {
+            const formattedError = formatZodError(parsedEnvs.error);
+            console.error("\n🚨 Environment Variables Validation Error:\n");
+            console.error(formattedError);
+            console.error("\nPlease check your .env file and provide all required variables.\n");
+            return false;
+        }
+        return true;
+    }
+    catch (error) {
+        console.error("\n🚨 Unexpected error while validating environment variables");
+        return false;
+    }
+}
+// this is a helper function to get the environment variable
+export function getEnvVariable(key, defaultValue) {
+    return process.env[key] ?? defaultValue;
+}

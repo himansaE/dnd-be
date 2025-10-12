@@ -429,9 +429,9 @@ export class StoryService {
       characters.map((c) => ({ id: c.id, name: c.name }))
     );
 
-    if (characters.length !== 10) {
+    if (characters.length < 10 || characters.length > 30) {
       throw new Error(
-        `Expected 10 characters, got ${characters.length}. Some character IDs may be invalid.`
+        `Expected 10-30 characters, got ${characters.length}. Some character IDs may be invalid.`
       );
     }
 
@@ -496,7 +496,6 @@ export class StoryService {
       choiceId,
       nextSegmentId,
       flowHistory,
-      previousSegmentIdsHint: flowHistory,
     });
 
     // Build the full conversation for the API call
@@ -558,17 +557,68 @@ export class StoryService {
 
         content = JSON.parse(response);
 
+        console.log(`[generateStoryContinuation] Raw AI response structure:`, {
+          hasSegments: !!content?.segments,
+          hasNestedSegments: !!content?.segments?.segments,
+          topLevelKeys: Object.keys(content ?? {}),
+          segmentKeys: Object.keys(content?.segments ?? {}),
+        });
+
         // Sanitize provider output: flatten nested segments, fix character keys, filter prior IDs
-        content = this.sanitizeContinuationContent(
+        const sanitized = this.sanitizeContinuationContent(
           content,
           flowHistory ?? [],
           nextSegmentId
         );
 
+        console.log(`[generateStoryContinuation] Sanitization result:`, {
+          inputHadNested: !!content?.segments?.segments,
+          outputHasSegments: !!sanitized?.segments,
+          outputHasNested: !!sanitized?.segments?.segments,
+          outputSegmentKeys: Object.keys(sanitized?.segments ?? {}),
+        });
+
+        content = sanitized;
+
+        console.log(
+          `[generateStoryContinuation] After assignment to content:`,
+          {
+            hasSegments: !!content?.segments,
+            hasNestedSegments: !!content?.segments?.segments,
+            segmentKeys: Object.keys(content?.segments ?? {}).slice(0, 5),
+          }
+        );
+
+        // CRITICAL: Validate that the requested segment ID is present
+        if (!content?.segments || !content.segments[nextSegmentId]) {
+          console.error(
+            `VALIDATION FAILED: AI did not generate the requested segment "${nextSegmentId}"`
+          );
+          console.error(
+            `Available segment IDs:`,
+            Object.keys(content?.segments ?? {})
+          );
+
+          // If this is not the last retry, try again
+          if (retryCount < maxRetries - 1) {
+            console.warn(
+              `Will retry (attempt ${retryCount + 2}/${maxRetries})...`
+            );
+            retryCount++;
+            continue;
+          } else {
+            throw new Error(
+              `AI failed to generate the requested segment "${nextSegmentId}" after ${maxRetries} attempts. Available segments: ${Object.keys(
+                content?.segments ?? {}
+              ).join(", ")}`
+            );
+          }
+        }
+
         console.log(
           `Story continuation parsed successfully after ${
             retryCount + 1
-          } attempts.`
+          } attempts. Requested segment "${nextSegmentId}" is present.`
         );
         break;
       } catch (error: any) {
@@ -600,6 +650,14 @@ export class StoryService {
       );
     }
 
+    console.log(`[generateStoryContinuation] Final return structure:`, {
+      hasSegments: !!content?.segments,
+      hasNestedSegments: !!content?.segments?.segments,
+      topLevelKeys: Object.keys(content ?? {}),
+      segmentKeysCount: Object.keys(content?.segments ?? {}).length,
+      firstFewSegmentKeys: Object.keys(content?.segments ?? {}).slice(0, 3),
+    });
+
     return content;
   }
 
@@ -608,9 +666,22 @@ export class StoryService {
     previousIds: string[],
     requiredId: string
   ) {
-    const segmentsContainer = raw?.segments?.segments ? raw.segments : raw;
-    const segmentsObj: Record<string, any> =
-      segmentsContainer?.segments ?? segmentsContainer ?? {};
+    // Handle nested segments structure (AI sometimes returns segments.segments)
+    let segmentsObj: Record<string, any> = {};
+
+    if (raw?.segments?.segments && typeof raw.segments.segments === "object") {
+      // Case: { segments: { segments: { ... } } }
+      console.log(
+        "[sanitizeContinuationContent] Detected nested segments.segments structure, flattening..."
+      );
+      segmentsObj = raw.segments.segments;
+    } else if (raw?.segments && typeof raw.segments === "object") {
+      // Case: { segments: { ... } }
+      segmentsObj = raw.segments;
+    } else {
+      // Fallback
+      segmentsObj = raw ?? {};
+    }
 
     const previous = new Set((previousIds || []).map((s) => String(s)));
     const result: Record<string, any> = {};
