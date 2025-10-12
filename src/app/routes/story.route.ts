@@ -9,16 +9,37 @@ import {
 const storyRoute = new Hono();
 const storyService = new StoryService();
 
-storyRoute.get(
+storyRoute.post(
   "/start-scene",
-  zValidator("query", storyStartSchema),
+  zValidator("json", storyStartSchema),
   async (c) => {
-    const data = c.req.valid("query");
-    return await storyService
-      .startStory(data.title, data.description, data.plot)
-      .then((response) => {
-        return c.json(response, 200);
-      });
+    const requestId = `start-${Date.now().toString(36)}`;
+    console.log(
+      `[${requestId}] Story start request with ${
+        c.req.valid("json").characterIds.length
+      } characters`
+    );
+
+    try {
+      const data = c.req.valid("json");
+      const response = await storyService.startStory(
+        data.title,
+        data.description,
+        data.plot,
+        data.characterIds
+      );
+      console.log(`[${requestId}] Story start SUCCESS`);
+      return c.json(response, 200);
+    } catch (error: any) {
+      console.error(`[${requestId}] Story start ERROR:`, error);
+      return c.json(
+        {
+          error: "Failed to start story",
+          message: error.message ?? "Unknown error",
+        },
+        500
+      );
+    }
   }
 );
 

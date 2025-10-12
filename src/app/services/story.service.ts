@@ -15,10 +15,13 @@ import {
 import { writeFile, readFile, unlink, mkdir } from "fs/promises";
 import { promisify } from "util";
 import { exec } from "child_process";
+import { CharacterRepository } from "@repositories/character.repository.js";
 
 const run = promisify(exec);
 
 export class StoryService {
+  private characterRepo = new CharacterRepository();
+
   async getPlayerProgress(playerId: string): Promise<StoryProgress> {
     const progress = await prisma.playerProgress.findUnique({
       where: { userId: playerId },
@@ -298,17 +301,31 @@ export class StoryService {
     title: string,
     description: string,
     plot: string,
-    base: StoryBaseOptions
+    base: StoryBaseOptions,
+    selectedCharacters: any[]
   ): Promise<string> {
     let content: any;
     let response: string = "";
+
+    // Format characters with full details for AI
+    const charactersForAI = selectedCharacters.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      ability: c.ability || "None",
+      description: c.description || "",
+    }));
+
+    console.log(
+      `[StoryService.generateStoryStartScene] Passing ${charactersForAI.length} characters to AI`
+    );
 
     const originalPrompts: ChatCompletionMessageParam[] = generateStoryPrompts(
       title,
       description,
       plot,
       base.scene,
-      JSON.stringify(base.characters)
+      JSON.stringify(charactersForAI)
     );
 
     let retryCount = 0;
@@ -395,14 +412,39 @@ export class StoryService {
 
     return content;
   }
-  public async startStory(title: string, description: string, plot: string) {
+  public async startStory(
+    title: string,
+    description: string,
+    plot: string,
+    characterIds: string[]
+  ) {
+    console.log(
+      `[StoryService.startStory] START - Fetching ${characterIds.length} characters`
+    );
+
+    // Fetch selected characters from database
+    const characters = await this.characterRepo.findManyByIds(characterIds);
+    console.log(
+      `[StoryService.startStory] Fetched ${characters.length} characters:`,
+      characters.map((c) => ({ id: c.id, name: c.name }))
+    );
+
+    if (characters.length !== 10) {
+      throw new Error(
+        `Expected 10 characters, got ${characters.length}. Some character IDs may be invalid.`
+      );
+    }
+
+    // Generate opening scene (no longer generates characters)
     const storyBase = await this.generateStoryBase(title, description, plot);
 
+    // Generate story start scene with user-selected characters
     const startScene = await this.generateStoryStartScene(
       title,
       description,
       plot,
-      storyBase
+      storyBase,
+      characters
     );
     console.log("Start scene generated successfully:", startScene);
     return {
@@ -566,16 +608,16 @@ export class StoryService {
     previousIds: string[],
     requiredId: string
   ) {
-    const segmentsContainer = raw?.segments?.segments
-      ? raw.segments
-      : raw;
-    const segmentsObj: Record<string, any> = segmentsContainer?.segments ?? segmentsContainer ?? {};
+    const segmentsContainer = raw?.segments?.segments ? raw.segments : raw;
+    const segmentsObj: Record<string, any> =
+      segmentsContainer?.segments ?? segmentsContainer ?? {};
 
     const previous = new Set((previousIds || []).map((s) => String(s)));
     const result: Record<string, any> = {};
 
     const normalizeNarrativeItem = (item: any) => {
-      if (!item || typeof item !== "object") return { type: "narrator", text: "" };
+      if (!item || typeof item !== "object")
+        return { type: "narrator", text: "" };
       if (item.type === "character") {
         const name = item.name ?? item.speaker ?? "";
         const dialogue = item.dialogue ?? item.text ?? "";
