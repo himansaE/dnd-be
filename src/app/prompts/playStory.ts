@@ -53,7 +53,7 @@ Your task is to generate JSON data representing a section of the story graph. Th
 
 **Structure of Individual Segments (within the "segments" object in either format):**
 -   Each value in the "segments" object must be a Segment Data object with:
-    -   **narrative_content**: An array containing all narrative and dialogue elements, presented in sequence. You MUST use **ONLY** "narrator" or "character" types. **Aim for a natural, immersive flow that mixes descriptive text ('narrator' type) and character dialogue ('character' type). When characters are interacting, strive to include short, back-and-forth dialogue exchanges over multiple 'character' entries to make conversations feel more natural.**
+  -   **narrative_content**: An array containing all narrative and dialogue elements, presented in sequence. You MUST use **ONLY** "narrator" or "character" types. Prioritize character-driven scenes: keep "narrator" entries concise and functional (scene-setting, sensory detail, brief transitions). Let characters carry the scene—use multiple short, back-and-forth 'character' entries so characters interact directly with each other and with the player more frequently than the narrator. Avoid narrator monologues; show through dialogue when possible.
         -   { "type": "narrator", "text": "..." }
         -   { "type": "character", "name": "...", "dialogue": "..." }
     -   **choices**: An array of **2-3** immersive and meaningful player choice objects. **Aim to provide 3 choices whenever narratively appropriate to offer more options.** Provide \`[]\` if no choices. Each choice object MUST have:
@@ -68,6 +68,7 @@ Your task is to generate JSON data representing a section of the story graph. Th
 2.  Generate data for **approximately 6-8 interconnected segments** within the "segments" object in the chosen format. Prioritize generating a valid, interconnected graph fragment starting from the requested ID/start ID over hitting the exact segment count if length becomes an issue. Ensure the starting segment for the requested section is included in the 'segments' map.
 3.  Ensure all segments generated within the "segments" object strictly follow the "Structure of Individual Segments" rules.
 4.  **Within the 'narrative_content' array of each segment, craft narrative and dialogue that flows naturally. When characters interact, include multiple sequential 'character' entries for exchanges that create short conversations.** Balance the length of narrative content, including conversations, so the total output size remains manageable.
+5.  New or introduced characters from the provided character list should "meet" other listed characters frequently across the generated segments (i.e., when a character appears for the first time in this fragment, include at least one scene where they encounter or speak directly with another listed character). Prioritize scenes where characters address the player directly when relevant—the player should regularly be engaged by named characters rather than only by the narrator.
 5.  Ensure choices within the generated segments link to other segments using correct \`next_segment_id\` values. Choices can link to segments *outside* this generated set.
 6.  Provide **2-3** choices per segment, **aiming for 3 choices when narratively appropriate**. If a segment is an endpoint within this generated fragment, use \`[]\`.
 7.  Create **globally unique** and **descriptive** "next_segment_id" values (snake_case).
@@ -82,10 +83,19 @@ Your task is to generate JSON data representing a section of the story graph. Th
 `;
 /* eslint-enable max-len */
 
+// NOTE: Prompt behavior updated to reduce narrator dominance and emphasize
+// character-driven interaction. Changes made to:
+// - Instruct the model to keep narrator entries brief and functional.
+// - Require characters to address the player more frequently.
+// - Ensure newly introduced characters meet other provided characters early
+//   in the fragment. These are behavioral constraints only; they do not
+// alter the JSON output format requirements.
+
+
 // --- Initial User Prompt Base ---
 // This base content is used by generateStoryPrompts for the *first* API call.
 const storyStartUserPromptBase = `
-Generate the **initial section of the story graph** as described in the system prompt, starting with the "start" segment and including approximately 5-7 branching segments. Focus on creating an engaging and natural-feeling opening scene with varied narrative elements, including natural-sounding dialogue exchanges when characters interact.
+Generate the **initial section of the story graph** as described in the system prompt, starting with the "start" segment and including approximately 5-7 branching segments. Make the opening scene character-driven: minimize long narrator descriptions and favor short, active dialogue that brings characters into direct contact with the player.
 
 Adventure Title: {{title}}
 Description: {{description}}
@@ -101,6 +111,11 @@ Each character object includes:
 - type: Character's role (Enemy, Ally, Random Encounter, etc.)
 - ability: Special power or skill
 - description: Background information
+
+Additional guidance for dialogue and scenes:
+- Keep narrator lines concise and purposeful (set scene, time, or small sensory cues). Do not use the narrator to relay character thoughts that could instead be shown via dialogue.
+- Characters should address the player directly at least once per 1-2 segments when it fits the scene (e.g., asking a question, offering a choice, commenting on the player's actions).
+- When a character appears for the first time in this fragment, include at least one interaction where they meet or speak with another character from the provided list. These "meet" scenes should be natural (short greetings, objections, shared tasks) and help bind the cast together early.
 
 **REMINDER**: When generating dialogue for a character, the JSON MUST include their "characterId" field with the exact UUID from the list above.
 `;
