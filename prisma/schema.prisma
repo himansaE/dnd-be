@@ -243,6 +243,8 @@ model Character {
   type        String
   ability     String?
   description String?  @db.Text
+  imageKey    String?
+  imageUrl    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

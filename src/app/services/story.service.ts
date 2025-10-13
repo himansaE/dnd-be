@@ -15,10 +15,13 @@ import {
 import { writeFile, readFile, unlink, mkdir } from "fs/promises";
 import { promisify } from "util";
 import { exec } from "child_process";
+import { CharacterRepository } from "@repositories/character.repository.js";
 
 const run = promisify(exec);
 
 export class StoryService {
+  private characterRepo = new CharacterRepository();
+
   async getPlayerProgress(playerId: string): Promise<StoryProgress> {
     const progress = await prisma.playerProgress.findUnique({
       where: { userId: playerId },
@@ -298,17 +301,31 @@ export class StoryService {
     title: string,
     description: string,
     plot: string,
-    base: StoryBaseOptions
+    base: StoryBaseOptions,
+    selectedCharacters: any[]
   ): Promise<string> {
     let content: any;
     let response: string = "";
+
+    // Format characters with full details for AI
+    const charactersForAI = selectedCharacters.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      ability: c.ability || "None",
+      description: c.description || "",
+    }));
+
+    console.log(
+      `[StoryService.generateStoryStartScene] Passing ${charactersForAI.length} characters to AI`
+    );
 
     const originalPrompts: ChatCompletionMessageParam[] = generateStoryPrompts(
       title,
       description,
       plot,
       base.scene,
-      JSON.stringify(base.characters)
+      JSON.stringify(charactersForAI)
     );
 
     let retryCount = 0;
@@ -395,14 +412,39 @@ export class StoryService {
 
     return content;
   }
-  public async startStory(title: string, description: string, plot: string) {
+  public async startStory(
+    title: string,
+    description: string,
+    plot: string,
+    characterIds: string[]
+  ) {
+    console.log(
+      `[StoryService.startStory] START - Fetching ${characterIds.length} characters`
+    );
+
+    // Fetch selected characters from database
+    const characters = await this.characterRepo.findManyByIds(characterIds);
+    console.log(
+      `[StoryService.startStory] Fetched ${characters.length} characters:`,
+      characters.map((c) => ({ id: c.id, name: c.name }))
+    );
+
+    if (characters.length < 10 || characters.length > 30) {
+      throw new Error(
+        `Expected 10-30 characters, got ${characters.length}. Some character IDs may be invalid.`
+      );
+    }
+
+    // Generate opening scene (no longer generates characters)
     const storyBase = await this.generateStoryBase(title, description, plot);
 
+    // Generate story start scene with user-selected characters
     const startScene = await this.generateStoryStartScene(
       title,
       description,
       plot,
-      storyBase
+      storyBase,
+      characters
     );
     console.log("Start scene generated successfully:", startScene);
     return {
@@ -431,8 +473,11 @@ export class StoryService {
         "Story continuation generated successfully:",
         continuationSegments
       );
+
+      // continuationSegments already has { segments: {...} } structure
+      // Don't wrap it again!
       return {
-        segments: continuationSegments,
+        ...continuationSegments,
         success: true,
       };
     } catch (error) {
@@ -454,7 +499,6 @@ export class StoryService {
       choiceId,
       nextSegmentId,
       flowHistory,
-      previousSegmentIdsHint: flowHistory,
     });
 
     // Build the full conversation for the API call
@@ -516,17 +560,68 @@ export class StoryService {
 
         content = JSON.parse(response);
 
+        console.log(`[generateStoryContinuation] Raw AI response structure:`, {
+          hasSegments: !!content?.segments,
+          hasNestedSegments: !!content?.segments?.segments,
+          topLevelKeys: Object.keys(content ?? {}),
+          segmentKeys: Object.keys(content?.segments ?? {}),
+        });
+
         // Sanitize provider output: flatten nested segments, fix character keys, filter prior IDs
-        content = this.sanitizeContinuationContent(
+        const sanitized = this.sanitizeContinuationContent(
           content,
           flowHistory ?? [],
           nextSegmentId
         );
 
+        console.log(`[generateStoryContinuation] Sanitization result:`, {
+          inputHadNested: !!content?.segments?.segments,
+          outputHasSegments: !!sanitized?.segments,
+          outputHasNested: !!sanitized?.segments?.segments,
+          outputSegmentKeys: Object.keys(sanitized?.segments ?? {}),
+        });
+
+        content = sanitized;
+
+        console.log(
+          `[generateStoryContinuation] After assignment to content:`,
+          {
+            hasSegments: !!content?.segments,
+            hasNestedSegments: !!content?.segments?.segments,
+            segmentKeys: Object.keys(content?.segments ?? {}).slice(0, 5),
+          }
+        );
+
+        // CRITICAL: Validate that the requested segment ID is present
+        if (!content?.segments || !content.segments[nextSegmentId]) {
+          console.error(
+            `VALIDATION FAILED: AI did not generate the requested segment "${nextSegmentId}"`
+          );
+          console.error(
+            `Available segment IDs:`,
+            Object.keys(content?.segments ?? {})
+          );
+
+          // If this is not the last retry, try again
+          if (retryCount < maxRetries - 1) {
+            console.warn(
+              `Will retry (attempt ${retryCount + 2}/${maxRetries})...`
+            );
+            retryCount++;
+            continue;
+          } else {
+            throw new Error(
+              `AI failed to generate the requested segment "${nextSegmentId}" after ${maxRetries} attempts. Available segments: ${Object.keys(
+                content?.segments ?? {}
+              ).join(", ")}`
+            );
+          }
+        }
+
         console.log(
           `Story continuation parsed successfully after ${
             retryCount + 1
-          } attempts.`
+          } attempts. Requested segment "${nextSegmentId}" is present.`
         );
         break;
       } catch (error: any) {
@@ -558,6 +653,14 @@ export class StoryService {
       );
     }
 
+    console.log(`[generateStoryContinuation] Final return structure:`, {
+      hasSegments: !!content?.segments,
+      hasNestedSegments: !!content?.segments?.segments,
+      topLevelKeys: Object.keys(content ?? {}),
+      segmentKeysCount: Object.keys(content?.segments ?? {}).length,
+      firstFewSegmentKeys: Object.keys(content?.segments ?? {}).slice(0, 3),
+    });
+
     return content;
   }
 
@@ -566,16 +669,29 @@ export class StoryService {
     previousIds: string[],
     requiredId: string
   ) {
-    const segmentsContainer = raw?.segments?.segments
-      ? raw.segments
-      : raw;
-    const segmentsObj: Record<string, any> = segmentsContainer?.segments ?? segmentsContainer ?? {};
+    // Handle nested segments structure (AI sometimes returns segments.segments)
+    let segmentsObj: Record<string, any> = {};
+
+    if (raw?.segments?.segments && typeof raw.segments.segments === "object") {
+      // Case: { segments: { segments: { ... } } }
+      console.log(
+        "[sanitizeContinuationContent] Detected nested segments.segments structure, flattening..."
+      );
+      segmentsObj = raw.segments.segments;
+    } else if (raw?.segments && typeof raw.segments === "object") {
+      // Case: { segments: { ... } }
+      segmentsObj = raw.segments;
+    } else {
+      // Fallback
+      segmentsObj = raw ?? {};
+    }
 
     const previous = new Set((previousIds || []).map((s) => String(s)));
     const result: Record<string, any> = {};
 
     const normalizeNarrativeItem = (item: any) => {
-      if (!item || typeof item !== "object") return { type: "narrator", text: "" };
+      if (!item || typeof item !== "object")
+        return { type: "narrator", text: "" };
       if (item.type === "character") {
         const name = item.name ?? item.speaker ?? "";
         const dialogue = item.dialogue ?? item.text ?? "";
