@@ -58,11 +58,12 @@ Return ONLY valid JSON with NO markdown formatting, NO code blocks, JUST the JSO
 
 **CRITICAL RULES:**
 
-1. ONLY select characters from the provided list (use exact IDs and names)
-2. Scores must be integers 0-10
-3. Reasoning must be story-specific, not generic
-4. Return between 10-15 characters
-5. Output ONLY the JSON object, no extra text
+1. **NO HALLUCINATIONS:** ONLY select characters from the provided list. Check the ID character-by-character.
+2. **EXACT MATCH:** Use the EXACT character ID provided. Do not alter it.
+3. Scores must be integers 0-10.
+4. Reasoning must be story-specific.
+5. Return between 10-15 characters.
+6. Output ONLY the JSON object.
 `;
 /* eslint-enable max-len */
 
@@ -90,6 +91,7 @@ Plot Overview: ${storyPlot}
 ---
 
 **AVAILABLE CHARACTERS (${allCharacters.length} total):**
+**WARNING: You must ONLY select from the list below. Do not invent IDs.**
 
 ${allCharacters
   .map(
@@ -107,9 +109,10 @@ ${i + 1}. CHARACTER ID: ${c.id}
 
 **YOUR TASK:**
 
-Analyze the story above and select 10-15 best-fit characters from the available list. Follow the analysis framework in the system prompt. Focus on creating a cohesive party that can handle this specific story's challenges while maintaining narrative coherence.
-
-Return the JSON response with selected characters, scores, reasoning, and overall strategy.
+1. **VERIFICATION STEP:** Before selecting any character, verify that their ID exists EXACTLY in the "AVAILABLE CHARACTERS" list above.
+2. Analyze the story and select 10-15 best-fit characters.
+3. **NEGATIVE CONSTRAINT:** Do NOT invent character IDs. Do NOT modify character IDs. If a character is not in the list, do NOT select them.
+4. Return the JSON response with selected characters, scores, reasoning, and overall strategy.
 `;
 
   return [

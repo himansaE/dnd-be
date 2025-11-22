@@ -113,12 +113,22 @@ export class CharacterSelectionService {
     const invalidIds = selectedIds.filter((id) => !validCharacterIds.has(id));
 
     if (invalidIds.length > 0) {
-      console.error(
-        `[${requestId}] AI selected invalid character IDs:`,
+      console.warn(
+        `[${requestId}] AI selected invalid character IDs (hallucinations):`,
         invalidIds
       );
+      // Filter out invalid characters from the result
+      result.selectedCharacters = result.selectedCharacters.filter((c) =>
+        validCharacterIds.has(c.characterId)
+      );
+    }
+
+    if (result.selectedCharacters.length < 10) {
+      console.error(
+        `[${requestId}] After filtering invalid IDs, only ${result.selectedCharacters.length} characters remain.`
+      );
       throw new Error(
-        `AI selected ${invalidIds.length} invalid character ID(s)`
+        `AI selected insufficient valid characters (${result.selectedCharacters.length}/10 minimum)`
       );
     }
 
