@@ -13,8 +13,10 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.901.0",
     "@clerk/backend": "^1.23.7",
+    "@google/genai": "^1.30.0",
     "@hono/clerk-auth": "^2.0.0",
     "@hono/node-server": "^1.13.7",
+    "@hono/node-ws": "^1.2.0",
     "@hono/zod-validator": "^0.4.3",
     "@prisma/client": "^6.16.3",
     "child_process": "^1.0.2",
@@ -23,10 +25,12 @@
     "hono": "^4.6.17",
     "openai": "^4.83.0",
     "util": "^0.12.5",
+    "ws": "^8.18.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
+    "@types/ws": "^8.18.1",
     "prisma": "^6.16.3",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"

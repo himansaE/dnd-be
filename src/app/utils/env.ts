@@ -12,6 +12,7 @@ const envSchema = z.object({
   OPENAI_APIKEY: z.string(),
   OPENAI_BASEURL: z.string(),
   OPENAI_MODEL_NAME: z.string(),
+  GEMINI_API_KEY: z.string(),
   WORKER_URL: z.string(),
   WORKER_TOKEN: z.string(),
   BUCKET_URL: z.string(),
