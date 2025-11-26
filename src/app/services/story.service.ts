@@ -689,6 +689,9 @@ export class StoryService {
     const previous = new Set((previousIds || []).map((s) => String(s)));
     const result: Record<string, any> = {};
 
+    // Extract music_tracks if present
+    const music_tracks = raw?.music_tracks || {};
+
     const normalizeNarrativeItem = (item: any) => {
       if (!item || typeof item !== "object")
         return { type: "narrator", text: "" };
@@ -739,6 +742,6 @@ export class StoryService {
       result[key] = normalizeSegment(segmentsObj[key]);
     }
 
-    return { segments: result };
+    return { segments: result, music_tracks };
   }
 }
