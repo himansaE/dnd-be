@@ -24,3 +24,44 @@ export const storyContinueSchema = z.object({
   nextSegmentId: z.string().min(1, "Next segment ID is required"),
   flowHistory: z.array(z.string()).optional(),
 });
+
+// Output Schema (AI Response)
+export const soundtrackSchema = z.object({
+  track_id: z.string(),
+  prompt: z.string().optional(),
+  reason: z.string().optional(),
+});
+
+export const musicTrackSchema = z.object({
+  id: z.string(),
+  prompt: z.string(),
+  mood: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+export const storyResponseSchema = z.object({
+  music_tracks: z.record(z.string(), musicTrackSchema).optional(),
+  segments: z.record(
+    z.string(), // segmentId
+    z.object({
+      narrative_content: z.array(
+        z.union([
+          z.object({ type: z.literal("narrator"), text: z.string() }),
+          z.object({
+            type: z.literal("character"),
+            name: z.string(),
+            dialogue: z.string(),
+            characterId: z.string().optional(),
+          }),
+        ])
+      ),
+      choices: z.array(
+        z.object({
+          text: z.string(),
+          next_segment_id: z.string(),
+        })
+      ),
+      soundtrack: soundtrackSchema,
+    })
+  ),
+});

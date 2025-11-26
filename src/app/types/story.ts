@@ -45,6 +45,11 @@ export interface QuestRequirements
 export type StoryBaseOptions = {
   scene: string;
   characters: Character[];
+  soundtrack?: {
+    action: "KEEP" | "CHANGE";
+    prompt?: string;
+    reason?: string;
+  };
 };
 
 export type Character = {

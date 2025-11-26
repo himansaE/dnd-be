@@ -711,7 +711,26 @@ export class StoryService {
             next_segment_id: String(c?.next_segment_id ?? ""),
           }))
         : [];
-      return { narrative_content: narrative, choices };
+      const soundtrack =
+        seg?.soundtrack && typeof seg.soundtrack === "object"
+          ? {
+              action: seg.soundtrack.action === "CHANGE" ? "CHANGE" : "KEEP",
+              // Keep both track_id and prompt if the model supplies them.
+              track_id:
+                typeof seg.soundtrack.track_id === "string"
+                  ? seg.soundtrack.track_id
+                  : undefined,
+              prompt:
+                typeof seg.soundtrack.prompt === "string"
+                  ? seg.soundtrack.prompt
+                  : undefined,
+              reason:
+                typeof seg.soundtrack.reason === "string"
+                  ? seg.soundtrack.reason
+                  : undefined,
+            }
+          : undefined;
+      return { narrative_content: narrative, choices, soundtrack };
     };
 
     for (const key of Object.keys(segmentsObj)) {
